@@ -269,14 +269,14 @@ class BaseFilter:
             :attr:`~telegram.Update.edited_channel_post` or
             :attr:`~telegram.Update.edited_message`, :obj:`False` otherwise.
         """
-        if (  # Only message updates should be handled.
-            update.channel_post
-            or update.message
-            or update.edited_channel_post
-            or update.edited_message
-        ):
-            return True
-        return False
+        return bool(
+            (  # Only message updates should be handled.
+                update.channel_post
+                or update.message
+                or update.edited_channel_post
+                or update.edited_message
+            )
+        )
 
 
 class MessageFilter(BaseFilter):
@@ -444,25 +444,17 @@ class _MergedFilter(UpdateFilter):
         if self.and_filter:
             # And filter needs to short circuit if base is falsy
             if base_output:
-                comp_output = self.and_filter.check_update(update)
-                if comp_output:
+                if comp_output := self.and_filter.check_update(update):
                     if self.data_filter:
-                        merged = self._merge(base_output, comp_output)
-                        if merged:
+                        if merged := self._merge(base_output, comp_output):
                             return merged
                     return True
         elif self.or_filter:
             # Or filter needs to short circuit if base is truthy
             if base_output:
-                if self.data_filter:
-                    return base_output
-                return True
-
-            comp_output = self.or_filter.check_update(update)
-            if comp_output:
-                if self.data_filter:
-                    return comp_output
-                return True
+                return base_output if self.data_filter else True
+            if comp_output := self.or_filter.check_update(update):
+                return comp_output if self.data_filter else True
         return False
 
     @property
@@ -679,9 +671,7 @@ class _ChatUserBaseFilter(MessageFilter, ABC):
     def _parse_chat_id(chat_id: Optional[SCT[int]]) -> Set[int]:
         if chat_id is None:
             return set()
-        if isinstance(chat_id, int):
-            return {chat_id}
-        return set(chat_id)
+        return {chat_id} if isinstance(chat_id, int) else set(chat_id)
 
     @staticmethod
     def _parse_username(username: Optional[SCT[str]]) -> Set[str]:
@@ -790,8 +780,7 @@ class _ChatUserBaseFilter(MessageFilter, ABC):
         self._chat_ids -= parsed_chat_id
 
     def filter(self, message: Message) -> bool:
-        chat_or_user = self._get_chat_or_user(message)
-        if chat_or_user:
+        if chat_or_user := self._get_chat_or_user(message):
             if self.chat_ids:
                 return chat_or_user.id in self.chat_ids
             if self.usernames:
@@ -968,11 +957,11 @@ class Command(MessageFilter):
         if not message.entities:
             return False
 
-        first = message.entities[0]
-
         if self.only_start:
-            return bool(first.type == MessageEntity.BOT_COMMAND and first.offset == 0)
-        return bool(any(e.type == MessageEntity.BOT_COMMAND for e in message.entities))
+            first = message.entities[0]
+
+            return first.type == MessageEntity.BOT_COMMAND and first.offset == 0
+        return any((e.type == MessageEntity.BOT_COMMAND for e in message.entities))
 
 
 COMMAND = Command()
@@ -1005,7 +994,7 @@ class _Dice(MessageFilter):
 
         if emoji:  # for filters.Dice.BASKETBALL
             self.name = f"filters.Dice.{emoji.name}"
-            if self.values and emoji:  # for filters.Dice.Dice(4)  SLOT_MACHINE -> SlotMachine
+            if self.values:  # for filters.Dice.Dice(4)  SLOT_MACHINE -> SlotMachine
                 self.name = f"filters.Dice.{emoji.name.title().replace('_', '')}({self.values})"
         elif values:  # for filters.Dice(4)
             self.name = f"filters.Dice({self.values})"
@@ -1591,9 +1580,7 @@ class Mention(MessageFilter):
 
     @staticmethod
     def _fix_mention_username(mention: Union[int, str, TGUser]) -> Union[int, str, TGUser]:
-        if not isinstance(mention, str):
-            return mention
-        return mention.lstrip("@")
+        return mention if not isinstance(mention, str) else mention.lstrip("@")
 
     @classmethod
     def _check_mention(cls, message: Message, mention: Union[int, str, TGUser]) -> bool:
@@ -1616,8 +1603,12 @@ class Mention(MessageFilter):
                 for entity_text in entity_texts.values()
             )
         if isinstance(mention, int):
-            return bool(
-                any(mention == entity.user.id for entity in message.entities if entity.user)
+            return any(
+                (
+                    mention == entity.user.id
+                    for entity in message.entities
+                    if entity.user
+                )
             )
         return any(
             mention == cls._fix_mention_username(entity_text)

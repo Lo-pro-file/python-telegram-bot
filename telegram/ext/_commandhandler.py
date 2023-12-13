@@ -153,14 +153,14 @@ class CommandHandler(BaseHandler[Update, CCT]):
             :obj:`bool`: Whether the args are valid for this handler.
         """
         # pylint: disable=too-many-boolean-expressions
-        if (
-            (self.has_args is None)
-            or (self.has_args is True and args)
-            or (self.has_args is False and not args)
-            or (isinstance(self.has_args, int) and len(args) == self.has_args)
-        ):
-            return True
-        return False
+        return bool(
+            (
+                (self.has_args is None)
+                or (self.has_args is True and args)
+                or (self.has_args is False and not args)
+                or (isinstance(self.has_args, int) and len(args) == self.has_args)
+            )
+        )
 
     def check_update(
         self, update: object
@@ -189,17 +189,17 @@ class CommandHandler(BaseHandler[Update, CCT]):
                 command_parts = command.split("@")
                 command_parts.append(message.get_bot().username)
 
-                if not (
-                    command_parts[0].lower() in self.commands
-                    and command_parts[1].lower() == message.get_bot().username.lower()
+                if (
+                    command_parts[0].lower() not in self.commands
+                    or command_parts[1].lower()
+                    != message.get_bot().username.lower()
                 ):
                     return None
 
                 if not self._check_correct_args(args):
                     return None
 
-                filter_result = self.filters.check_update(update)
-                if filter_result:
+                if filter_result := self.filters.check_update(update):
                     return args, filter_result
                 return False
         return None

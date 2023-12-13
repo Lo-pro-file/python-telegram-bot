@@ -2283,7 +2283,7 @@ class TestApplication:
         app.run_polling(close_loop=False)
 
         if platform.system() == "Windows":
-            assert received_signals == []
+            assert not received_signals
         else:
             assert received_signals == [signal.SIGINT, signal.SIGTERM, signal.SIGABRT]
 
@@ -2292,7 +2292,7 @@ class TestApplication:
         app.run_webhook(port=49152, webhook_url="example.com", close_loop=False)
 
         if platform.system() == "Windows":
-            assert received_signals == []
+            assert not received_signals
         else:
             assert received_signals == [signal.SIGINT, signal.SIGTERM, signal.SIGABRT]
 

@@ -248,7 +248,7 @@ class TestForumMethodsWithRequest:
             msg = await coro
             pin_msg_tasks.add(asyncio.create_task(msg.pin()))
 
-        assert all([await task for task in pin_msg_tasks]) is True, "Message(s) were not pinned"
+        assert all(await task for task in pin_msg_tasks), "Message(s) were not pinned"
 
         result = await bot.unpin_all_forum_topic_messages(forum_group_id, message_thread_id)
         assert result is True, "Failed to unpin all the messages in forum topic"
@@ -262,7 +262,7 @@ class TestForumMethodsWithRequest:
             msg = await coro
             pin_msg_tasks.add(asyncio.create_task(msg.pin()))
 
-        assert all([await task for task in pin_msg_tasks]) is True, "Message(s) were not pinned"
+        assert all(await task for task in pin_msg_tasks), "Message(s) were not pinned"
 
         result = await bot.unpin_all_general_forum_topic_messages(forum_group_id)
         assert result is True, "Failed to unpin all the messages in forum topic"
