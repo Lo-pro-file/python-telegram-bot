@@ -60,7 +60,7 @@ class InlineQueryResult(TelegramObject):
 
         # Required
         self.type: str = type
-        self.id: str = str(id)
+        self.id: str = id
 
         self._id_attrs = (self.id,)
 

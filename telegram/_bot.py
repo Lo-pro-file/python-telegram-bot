@@ -293,15 +293,16 @@ class Bot(TelegramObject, AsyncContextManager["Bot"]):
             )
 
         if private_key:
-            if not CRYPTO_INSTALLED:
+            if CRYPTO_INSTALLED:
+                self._private_key = serialization.load_pem_private_key(
+                    private_key, password=private_key_password, backend=default_backend()
+                )
+
+            else:
                 raise RuntimeError(
                     "To use Telegram Passports, PTB must be installed via `pip install "
                     '"python-telegram-bot[passport]"`.'
                 )
-            self._private_key = serialization.load_pem_private_key(
-                private_key, password=private_key_password, backend=default_backend()
-            )
-
         self._freeze()
 
     async def __aenter__(self: BT) -> BT:
@@ -369,9 +370,7 @@ class Bot(TelegramObject, AsyncContextManager["Bot"]):
 
     def __hash__(self) -> int:
         """See :meth:`telegram.TelegramObject.__hash__`"""
-        if self._bot_user is None:
-            return super().__hash__()
-        return hash((self.bot, Bot))
+        return super().__hash__() if self._bot_user is None else hash((self.bot, Bot))
 
     def __repr__(self) -> str:
         """Give a string representation of the bot in the form ``Bot[token=...]``.
@@ -720,10 +719,7 @@ class Bot(TelegramObject, AsyncContextManager["Bot"]):
             api_kwargs=api_kwargs,
         )
 
-        if result is True:
-            return result
-
-        return Message.de_json(result, self)
+        return result if result is True else Message.de_json(result, self)
 
     async def initialize(self) -> None:
         """Initialize resources used by this class. Currently calls :meth:`get_me` to
@@ -2695,15 +2691,14 @@ class Bot(TelegramObject, AsyncContextManager["Bot"]):
             next_offset = ""
 
             if callable(results):
-                callable_output = results(current_offset_int)
-                if not callable_output:
-                    effective_results: Sequence[InlineQueryResult] = []
-                else:
+                if callable_output := results(current_offset_int):
                     effective_results = callable_output
                     # the callback *might* return more results on the next call, so we increment
                     # the page count
                     next_offset = str(current_offset_int + 1)
 
+                else:
+                    effective_results: Sequence[InlineQueryResult] = []
             elif len(results) > (current_offset_int + 1) * InlineQueryLimit.RESULTS:
                 # we expect more results for the next page
                 next_offset_int = current_offset_int + 1

@@ -851,9 +851,7 @@ class Job(Generic[CCT]):
             :obj:`True` if both objects have :paramref:`id` parameters identical.
             :obj:`False` otherwise.
         """
-        if isinstance(other, self.__class__):
-            return self.id == other.id
-        return False
+        return self.id == other.id if isinstance(other, self.__class__) else False
 
     def __hash__(self) -> int:
         """Builds a hash value for this object such that the hash of two objects is

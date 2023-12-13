@@ -174,10 +174,12 @@ def find_next_sibling_until(tag: Tag, name: str, until: Tag) -> PageElement | No
 
 def parse_table(h4: Tag) -> list[list[str]]:
     """Parses the Telegram doc table and has an output of a 2D list."""
-    table = find_next_sibling_until(h4, "table", h4.find_next_sibling("h4"))
-    if not table:
+    if table := find_next_sibling_until(
+        h4, "table", h4.find_next_sibling("h4")
+    ):
+        return [[td.text for td in tr.find_all("td")] for tr in table.find_all("tr")[1:]]
+    else:
         return []
-    return [[td.text for td in tr.find_all("td")] for tr in table.find_all("tr")[1:]]
 
 
 def check_method(h4: Tag) -> None:
@@ -412,17 +414,14 @@ def check_param_type(
         if obj_match is None:
             raise AssertionError(f"Array of {tg_param_type} not found in {ptb_param.name}")
         obj_str: str = obj_match.group(1)
-        # is obj a regular type like str?
-        array_of_mapped: set[type] = _get_params_base(obj_str, TYPE_MAPPING)
+        if array_of_mapped := _get_params_base(obj_str, TYPE_MAPPING):
+            unionized_objs = [array_of_mapped.pop()]
 
-        if len(array_of_mapped) == 0:  # no match found, it's from telegram module
+        else:
             # it could be a list of objects, so let's check that:
             objs = _extract_words(obj_str)
             # let's unionize all the objects, with and without ForwardRefs.
             unionized_objs: list[type] = [_unionizer(objs, True), _unionizer(objs, False)]
-        else:
-            unionized_objs = [array_of_mapped.pop()]
-
         # This means it is Array of Array of [obj]
         if "Array of Array of" in tg_param_type:
             return any(Sequence[Sequence[o]] == ptb_annotation for o in unionized_objs)
@@ -435,10 +434,7 @@ def check_param_type(
         if name in ptb_param.name:  # no strict == since we have a param: `explanation_parse_mode`
             # Check if it's ODVInput
             parsed = ODVInput[mapped_type]
-            if (ptb_annotation | None) == parsed:  # We have to add back None in our annotation
-                return True
-            return False
-
+            return ptb_annotation | None == parsed
     # Special case for send_* methods where we accept more types than the official API:
     if (
         ptb_param.name in ADDITIONAL_TYPES
@@ -491,7 +487,7 @@ def _unionizer(annotation: Sequence[Any] | set[Any], forward_ref: bool) -> Any:
     for t in annotation:
         if forward_ref:
             t = ForwardRef(t)  # noqa: PLW2901
-        elif not forward_ref and isinstance(t, str):  # we have to import objects from lib
+        elif isinstance(t, str):  # we have to import objects from lib
             t = getattr(telegram, t)  # noqa: PLW2901
         union = t if union is None else union | t
     return union

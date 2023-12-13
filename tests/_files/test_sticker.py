@@ -752,7 +752,7 @@ class TestStickerSetWithRequest:
                 ss = await bot.get_sticker_set(sticker_set)
                 assert isinstance(ss, StickerSet)
             except BadRequest as e:
-                if not e.message == "Stickerset_invalid":
+                if e.message != "Stickerset_invalid":
                     raise e
 
                 if sticker_set.startswith(test_by):
@@ -1057,7 +1057,7 @@ class TestMaskPositionWithRequest(TestMaskPositionBase):
             ss = await bot.get_sticker_set(name)
             assert isinstance(ss, StickerSet)
         except BadRequest as e:
-            if not e.message == "Stickerset_invalid":
+            if e.message != "Stickerset_invalid":
                 raise e
             sticker_set = await bot.create_new_sticker_set(
                 chat_id,
